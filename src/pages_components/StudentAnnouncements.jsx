@@ -21,7 +21,7 @@ export default function StudentAnnouncements() {
       try {
         const orFilter = `audience.eq.all_students,audience.eq.public,audience.eq.class:${student.class}`;
         const { data, error } = await supabase
-          .from("jmis_announcements")
+          .from("bluebell_announcements")
           .select("title, body, created_at, audience, pinned")
           .or(orFilter)
           .order("pinned", { ascending: false })

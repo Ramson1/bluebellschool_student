@@ -5,7 +5,7 @@ import { makeStudentResourcePage } from "./StudentResourceKit.jsx";
 import { RiBookOpenLine } from "react-icons/ri";
 
 export default makeStudentResourcePage({
-  table: "jmis_notes",
+  table: "bluebell_notes",
   title: "Notes",
   icon: RiBookOpenLine,
   layout: "cards",

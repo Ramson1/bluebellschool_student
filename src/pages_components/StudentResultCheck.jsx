@@ -39,7 +39,7 @@ export default function StudentResultCheck() {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase.from("jmis_settings").select("*").limit(1);
+        const { data } = await supabase.from("bluebell_settings").select("*").limit(1);
         if (data && data[0]) setSettings(data[0]);
       } catch (_) {/* keep whatever the shell provided */}
     })();
@@ -62,7 +62,7 @@ export default function StudentResultCheck() {
     const studentName = name.trim();
     try {
       let { data: resultData, error: resultError } = await supabase
-        .from("jmis_result")
+        .from("bluebell_result")
         .select("*")
         .eq("studentName", studentName)
         .eq("token", pin)
@@ -71,7 +71,7 @@ export default function StudentResultCheck() {
       if (resultError) {
         if (resultError.code === "PGRST116") {
           const { data: archivedData, error: archivedError } = await supabase
-            .from("jmis_result_history")
+            .from("bluebell_result_history")
             .select("*")
             .eq("studentName", studentName)
             .eq("token", pin)
@@ -94,18 +94,18 @@ export default function StudentResultCheck() {
 
       // Passport lookup: exact, then case-insensitive, then token-only fallback.
       let { data: studentData, error: studentError } = await supabase
-        .from("jmis_student").select("*").eq("name", studentName).eq("token", pin).single();
+        .from("bluebell_student").select("*").eq("name", studentName).eq("token", pin).single();
       if (studentError || !studentData) {
-        const r = await supabase.from("jmis_student").select("*").ilike("name", studentName).eq("token", pin).single();
+        const r = await supabase.from("bluebell_student").select("*").ilike("name", studentName).eq("token", pin).single();
         studentData = r.data; studentError = r.error;
       }
       if (studentError || !studentData) {
-        const r = await supabase.from("jmis_student").select("*").eq("token", pin).single();
+        const r = await supabase.from("bluebell_student").select("*").eq("token", pin).single();
         studentData = r.data; studentError = r.error;
       }
       if (studentError) toast.warn("Student passport image not available, but showing result.");
 
-      // tokenCount now lives on jmis_student (single source of truth). Carry the
+      // tokenCount now lives on bluebell_student (single source of truth). Carry the
       // student's remaining budget into the result payload so the result card's
       // exhausted-gate and per-view decrement act on the student's count instead
       // of the legacy per-result value (which is absent for students with no row).

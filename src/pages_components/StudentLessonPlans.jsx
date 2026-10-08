@@ -6,7 +6,7 @@ import { RiDraftLine } from "react-icons/ri";
 
 // "Lesson Coverage" — what has been / is being taught, week by week.
 export default makeStudentResourcePage({
-  table: "jmis_lesson_plans",
+  table: "bluebell_lesson_plans",
   title: "Lesson Coverage",
   icon: RiDraftLine,
   layout: "cards",

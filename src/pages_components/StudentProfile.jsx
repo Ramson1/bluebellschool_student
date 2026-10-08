@@ -52,12 +52,12 @@ export default function StudentProfile() {
   const saveProfile = async () => {
     setSaving(true);
     const { error } = await supabase
-      .from("jmis_student")
+      .from("bluebell_student")
       .update({ sex: form.sex, email: form.email, parentcontact: form.parentcontact, address: form.address })
       .eq("id", student.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
-    logAction(supabase, { email: student.email || student.name, role: "student", action: "student_profile_update", targetTable: "jmis_student", recordId: student.id, details: { fields: Object.keys(form) } });
+    logAction(supabase, { email: student.email || student.name, role: "student", action: "student_profile_update", targetTable: "bluebell_student", recordId: student.id, details: { fields: Object.keys(form) } });
     toast.success("Profile updated.");
     reload?.();
   };

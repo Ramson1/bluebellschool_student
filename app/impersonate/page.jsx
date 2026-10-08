@@ -16,7 +16,7 @@ import "../../src/styles/PortalShell.css";
 // IS the capability the portal trusts). The admin server put both values in this
 // URL's hash fragment (#i=<id>&t=<token>), which never reaches a server, the
 // referrer, or history. Here we establish that session, re-validate it against
-// jmis_student (fetchStudentScope), and hand off to the normal portal.
+// bluebell_student (fetchStudentScope), and hand off to the normal portal.
 //
 // This lives OUTSIDE the (student) route group (like /login), so it is not
 // wrapped by StudentShell; after establishing the session we navigate to /home,

@@ -21,7 +21,7 @@ export default function StudentAttendance() {
     (async () => {
       try {
         const { data, error } = await supabase
-          .from("jmis_attendance")
+          .from("bluebell_attendance")
           .select("date, check_in_time, check_out_time, status")
           .eq("class", student.class)
           .order("date", { ascending: false })

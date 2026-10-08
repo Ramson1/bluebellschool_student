@@ -37,11 +37,11 @@ export default function StudentHome() {
       try {
         const orFilter = `audience.eq.all_students,audience.eq.public,audience.eq.class:${student.class}`;
         const [ann, asg, att] = await Promise.all([
-          supabase.from("jmis_announcements").select("id, title, body, created_at, pinned").or(orFilter)
+          supabase.from("bluebell_announcements").select("id, title, body, created_at, pinned").or(orFilter)
             .order("pinned", { ascending: false }).order("created_at", { ascending: false }).limit(5),
-          supabase.from("jmis_assignments").select("id, title, subject, due_date").eq("class", student.class)
+          supabase.from("bluebell_assignments").select("id, title, subject, due_date").eq("class", student.class)
             .order("due_date", { ascending: true }).limit(5),
-          supabase.from("jmis_attendance").select("date, check_in_time, check_out_time").eq("class", student.class),
+          supabase.from("bluebell_attendance").select("date, check_in_time, check_out_time").eq("class", student.class),
         ]);
         if (!active) return;
         setAnnouncements(ann.data || []);

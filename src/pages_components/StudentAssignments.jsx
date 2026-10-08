@@ -57,7 +57,7 @@ export default function StudentAssignments() {
     (async () => {
       try {
         const { data: asg, error: e1 } = await supabase
-          .from("jmis_assignments")
+          .from("bluebell_assignments")
           .select("*")
           .eq("class", student.class)
           .order("created_at", { ascending: false })
@@ -67,7 +67,7 @@ export default function StudentAssignments() {
         // Read the learner's existing submissions; if the table isn't provisioned
         // yet, still show the assignments (submitting will surface the error).
         const { data: mine, error: e2 } = await supabase
-          .from("jmis_assignment_submissions")
+          .from("bluebell_assignment_submissions")
           .select("*")
           .eq("student_id", student.id);
         const map = {};
@@ -125,7 +125,7 @@ export default function StudentAssignments() {
         updated_at: new Date().toISOString(),
       };
       const { data, error } = await supabase
-        .from("jmis_assignment_submissions")
+        .from("bluebell_assignment_submissions")
         .upsert(payload, { onConflict: "assignment_id,student_id" })
         .select()
         .single();
