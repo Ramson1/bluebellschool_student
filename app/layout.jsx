@@ -6,7 +6,7 @@ import "../src/styles/PortalShell.css";
 export const metadata = {
   title: "Bluebell Student Portal",
   description: "Student portal for Bluebell International School",
-  icons: { icon: "/favicon.ico" },
+  icons: { icon: "/favicon.ico?v=4", apple: "/apple-touch-icon.png" },
 };
 
 // Proper mobile scaling: width follows the device, allow pinch-zoom, and let
