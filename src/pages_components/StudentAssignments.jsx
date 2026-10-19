@@ -38,6 +38,9 @@ async function uploadSubmissionFile(file) {
   return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
+// Cap attachments so a submission stays uploadable on slow connections.
+const MAX_ATTACHMENTS = 8;
+
 export default function StudentAssignments() {
   const scope = useContext(StudentContext);
   const student = scope?.student;
@@ -47,8 +50,7 @@ export default function StudentAssignments() {
   const [show, setShow] = useState(false);
   const [active, setActive] = useState(null);
   const [text, setText] = useState("");
-  const [fileUrl, setFileUrl] = useState("");
-  const [fileName, setFileName] = useState("");
+  const [attachments, setAttachments] = useState([]); // [{url,name,type,mime,size}]
   const [busy, setBusy] = useState(false);
 
   const load = () => {
@@ -87,29 +89,54 @@ export default function StudentAssignments() {
     const existing = subs[a.id];
     setActive(a);
     setText(existing?.submission_text || "");
-    setFileUrl(existing?.file_url || "");
-    setFileName("");
+    // Prefer the multi-attachment array; fall back to a legacy single file_url row.
+    setAttachments(
+      Array.isArray(existing?.attachments) && existing.attachments.length
+        ? existing.attachments
+        : existing?.file_url
+          ? [{ url: existing.file_url, name: "attached file", type: "file", mime: "", size: 0 }]
+          : []
+    );
     setShow(true);
   };
 
-  const onPickFile = async (file) => {
-    if (!file) return;
+  const onPickFiles = async (fileList) => {
+    const picked = Array.from(fileList || []);
+    if (!picked.length) return;
+    const room = MAX_ATTACHMENTS - attachments.length;
+    if (room <= 0) { toast.warn(`You can attach up to ${MAX_ATTACHMENTS} items.`); return; }
+    const batch = picked.slice(0, room);
     setBusy(true);
-    try {
-      const url = await uploadSubmissionFile(file);
-      setFileUrl(url);
-      setFileName(file.name);
-      toast.success("File attached.");
-    } catch (e) {
-      toast.error("Upload failed: " + e.message);
-    } finally {
-      setBusy(false);
+    const added = [];
+    for (const file of batch) {
+      try {
+        const url = await uploadSubmissionFile(file);
+        added.push({
+          url,
+          name: file.name,
+          type: (file.type || "").startsWith("image/") ? "image" : "file",
+          mime: file.type || "",
+          size: file.size || 0,
+        });
+      } catch (e) {
+        toast.error(`Upload failed for ${file.name}: ` + e.message);
+      }
     }
+    if (added.length) {
+      setAttachments((prev) => [...prev, ...added]);
+      toast.success(`${added.length} item${added.length === 1 ? "" : "s"} attached.`);
+    }
+    setBusy(false);
+  };
+
+  const removeAttachment = (idx) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const saveSubmission = async () => {
     if (!active) return;
-    if (!text.trim() && !fileUrl) { toast.warn("Type your answer or attach a file."); return; }
+    if (!student?.id) { toast.warn("Your session is missing a student ID — please sign in again."); return; }
+    if (!text.trim() && attachments.length === 0) { toast.warn("Type your answer or attach a file/image."); return; }
     setBusy(true);
     try {
       const payload = {
@@ -119,7 +146,9 @@ export default function StudentAssignments() {
         student_id: student.id,
         student_name: student.name,
         submission_text: text.trim(),
-        file_url: fileUrl || null,
+        // Mirror the first attachment into file_url for legacy readers.
+        file_url: attachments[0]?.url || null,
+        attachments,
         status: "submitted",
         submitted_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -197,11 +226,16 @@ export default function StudentAssignments() {
                   <button className="ap-btn primary sm" onClick={() => openSubmit(r)}>
                     {s ? <RiEditLine /> : <RiSendPlaneFill />} {s ? "Edit submission" : "Submit work"}
                   </button>
-                  {s?.file_url && (
-                    <a className="ap-muted" href={s.file_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.8rem" }}>
-                      <RiUploadCloud2Line /> your attached file
-                    </a>
-                  )}
+                  {(() => {
+                    const list = Array.isArray(s?.attachments) && s.attachments.length
+                      ? s.attachments
+                      : s?.file_url ? [{ url: s.file_url, name: "attached file", type: "file" }] : [];
+                    return list.length ? (
+                      <a className="ap-muted" href={list[0].url} target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.8rem" }}>
+                        <RiUploadCloud2Line /> 📎 {list.length} attachment{list.length === 1 ? "" : "s"}
+                      </a>
+                    ) : null;
+                  })()}
                 </div>
               </div>
             </div>
@@ -230,15 +264,57 @@ export default function StudentAssignments() {
             <label className="ap-label">Your answer</label>
             <textarea className="ap-input" rows={6} value={text} placeholder="Type your answer here…" onChange={(e) => setText(e.target.value)} />
           </div>
-          <div>
-            <label className="ap-label">Attach a file (optional)</label>
-            <input className="ap-input" type="file" disabled={busy} onChange={(e) => onPickFile(e.target.files?.[0])} />
-            {fileUrl && (
-              <a className="ap-muted" href={fileUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.8rem", display: "inline-block", marginTop: 4 }}>
-                <RiUploadCloud2Line /> {fileName || "attached file"} — open
-              </a>
+          <div className="d-flex flex-column gap-3">
+            <div>
+              <label className="ap-label">Attach files (optional)</label>
+              <input
+                className="ap-input"
+                type="file"
+                multiple
+                accept="*/*"
+                disabled={busy || attachments.length >= MAX_ATTACHMENTS}
+                onChange={(e) => { onPickFiles(e.target.files); e.target.value = ""; }}
+              />
+            </div>
+            <div>
+              <label className="ap-label">Add photos (optional)</label>
+              <input
+                className="ap-input"
+                type="file"
+                multiple
+                accept="image/*"
+                capture="environment"
+                disabled={busy || attachments.length >= MAX_ATTACHMENTS}
+                onChange={(e) => { onPickFiles(e.target.files); e.target.value = ""; }}
+              />
+            </div>
+            {attachments.length > 0 && (
+              <div className="d-flex flex-wrap gap-2 mt-1">
+                {attachments.map((att, idx) => (
+                  <div key={att.url + idx} className="d-flex align-items-center gap-1" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 4, maxWidth: 180 }}>
+                    {att.type === "image" ? (
+                      <a href={att.url} target="_blank" rel="noopener noreferrer">
+                        <img src={att.url} alt={att.name} style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, display: "block" }} />
+                      </a>
+                    ) : (
+                      <a className="ap-muted" href={att.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.78rem", display: "flex", alignItems: "center", gap: 4 }}>
+                        <RiFileTextLine /> <span style={{ maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(idx)}
+                      disabled={busy}
+                      aria-label="Remove attachment"
+                      style={{ border: "none", background: "transparent", color: "#dc2626", cursor: "pointer", fontWeight: 700, lineHeight: 1 }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
-            {busy && <span className="ap-muted" style={{ fontSize: "0.8rem", display: "block", marginTop: 4 }}>Working…</span>}
+            {busy && <span className="ap-muted" style={{ fontSize: "0.8rem", display: "block", marginTop: 4 }}>Uploading…</span>}
           </div>
         </Modal.Body>
         <Modal.Footer className="ap-modal-foot">
